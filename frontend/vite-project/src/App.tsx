@@ -174,9 +174,9 @@ function App() {
                         className="border border-orange-700 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-orange-700 transition hover:bg-orange-700 hover:text-stone-50 disabled:cursor-not-allowed disabled:border-emerald-900/20 disabled:text-emerald-900/30"
                         type="button"
                         onClick={() => addToCart(product)}
-                        disabled={product.stock === 0 || isAtLimit}
+                        disabled={isAtLimit}
                       >
-                        {product.stock === 0 ? 'Out of stock' : isAtLimit ? 'At limit' : cartItem ? 'Add one' : 'Add'}
+                        {product.stock === 0 ? 'Try order' : isAtLimit ? 'At limit' : cartItem ? 'Add one' : 'Add'}
                       </button>
                     </td>
                   </tr>
