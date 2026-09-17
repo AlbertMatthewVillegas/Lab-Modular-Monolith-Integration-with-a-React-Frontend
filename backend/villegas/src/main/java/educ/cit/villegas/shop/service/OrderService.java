@@ -1,26 +1,27 @@
 package educ.cit.villegas.shop.service;
 
-import educ.cit.villegas.entity.Inventory;
-import educ.cit.villegas.entity.Order;
-import educ.cit.villegas.entity.OrderItem;
-import educ.cit.villegas.event.OrderPlaced;
-import educ.cit.villegas.event.OrderRejected;
-import educ.cit.villegas.inventory.service.InventoryService;
-import educ.cit.villegas.shop.dto.OrderItemRequest;
-import educ.cit.villegas.shop.dto.OrderItemResponse;
-import educ.cit.villegas.shop.dto.OrderRequest;
-import educ.cit.villegas.shop.dto.OrderResponse;
-import educ.cit.villegas.shop.repository.OrderRepository;
-import org.springframework.stereotype.Service;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import educ.cit.villegas.event.LowStock;
+import educ.cit.villegas.event.OrderPlaced;
+import educ.cit.villegas.event.OrderRejected;
+import educ.cit.villegas.inventory.entity.Inventory;
+import educ.cit.villegas.inventory.service.InventoryService;
+import educ.cit.villegas.shop.dto.OrderItemDto;
+import educ.cit.villegas.shop.dto.OrderOutcome;
+import educ.cit.villegas.shop.dto.OrderRequest;
+import educ.cit.villegas.shop.dto.OrderResponse;
+import educ.cit.villegas.shop.entity.Order;
+import educ.cit.villegas.shop.entity.OrderItem;
+import educ.cit.villegas.shop.repository.OrderRepository;
 
 @Service
 public class OrderService {
@@ -29,8 +30,11 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    public OrderService(InventoryService inventoryService, OrderRepository orderRepository,
-                        ApplicationEventPublisher eventPublisher) {
+    public OrderService(
+        InventoryService inventoryService, 
+        OrderRepository orderRepository,
+        ApplicationEventPublisher eventPublisher
+    ) {
         this.inventoryService = inventoryService;
         this.orderRepository = orderRepository;
         this.eventPublisher = eventPublisher;
@@ -43,79 +47,79 @@ public class OrderService {
 
     @Transactional
     public OrderResponse placeOrder(OrderRequest request) {
-        List<OrderItemRequest> items = request.getItems();
-        Map<String, Integer> requestedQuantities = new HashMap<>();
+        
+        Order order = new Order();
 
-        for (OrderItemRequest item : items) {
+        List<OrderItemDto> items = request.getItems();
+        List<OrderOutcome> outcomes = new ArrayList<>();
+        String rejectionReason = null;
+        
+        for(OrderItemDto item : items) {
             Inventory currentItem = inventoryService.getItem(item.getProductId());
-            String rejectionReason = currentItem == null
-                    ? "Product not found"
-                    : item.getQuantity() <= 0
-                        ? "Quantity must be greater than zero"
-                        : "Insufficient stock";
-            int totalRequested = requestedQuantities.merge(item.getProductId(), item.getQuantity(), Integer::sum);
+            rejectionReason = getRejectionReason(item, currentItem);
+            outcomes.add(new OrderOutcome(item.getProductId(), rejectionReason != null ? rejectionReason : "Accepted"));
 
-            if (currentItem == null || item.getQuantity() <= 0 || totalRequested > currentItem.getStock()) {
-                Integer stock = currentItem == null ? null : currentItem.getStock();
-                Order order = new Order("REJECTED", rejectionReason);
-                for (OrderItemRequest requestedItem : items) {
-                    Inventory requestedInventory = inventoryService.getItem(requestedItem.getProductId());
-                    if (requestedInventory != null && requestedItem.getQuantity() > 0) {
-                        order.addItem(new OrderItem(requestedItem.getProductId(), requestedItem.getQuantity()));
-                    }
+        }
+
+        if (rejectionReason == null) { // order is not rejected
+            for(OrderItemDto item : items) {
+                int itemStock = inventoryService.getItem(item.getProductId()).getStock();
+                int orderQuantity = item.getQuantity();
+                int remainingStock = itemStock - orderQuantity;
+                if (remainingStock <= 5) {
+                    eventPublisher.publishEvent(new LowStock(item.getProductId(), remainingStock, orderQuantity));
                 }
-                order = orderRepository.save(order);
-                eventPublisher.publishEvent(new OrderRejected(order));
-                return rejectedResponse(order.getOrderId(), items, rejectionReason, stock);
+                inventoryService.reserve(item.getProductId(), item.getQuantity());
+                order.addItem(new OrderItem(
+                    item.getProductId(),
+                    inventoryService.getItem(item.getProductId()).getPrice(),
+                    item.getQuantity()));
             }
+        } 
+
+        order.setStatus(rejectionReason == null ? "CONFIRMED" : "REJECTED");
+        order.setReason(rejectionReason);
+        orderRepository.save(order);
+
+        if (rejectionReason != null) {
+            eventPublisher.publishEvent(new OrderRejected(order));
+        } else {
+            eventPublisher.publishEvent(new OrderPlaced(order));
         }
 
-        Integer remainingInventory = null;
-        Order order = new Order("CONFIRMED", "Order confirmed");
-        for (OrderItemRequest item : items) {
-            Inventory reservedItem = inventoryService.reserve(item.getProductId(), item.getQuantity());
-            remainingInventory = reservedItem.getStock();
-            order.addItem(new OrderItem(item.getProductId(), item.getQuantity()));
-        }
-        order = orderRepository.save(order);
-        eventPublisher.publishEvent(new OrderPlaced(order));
-        UUID savedOrderId = order.getOrderId();
-        List<OrderItemResponse> itemResponses = order.getItems().stream()
-            .map(item -> new OrderItemResponse(savedOrderId, item.getProductId(), "CONFIRMED"))
-                .toList();
-        return new OrderResponse("CONFIRMED", "Order confirmed", itemResponses, remainingInventory);
+        OrderResponse response = new OrderResponse();
+        response.setItems(outcomes);
+        response.setStatus(rejectionReason == null ? "CONFIRMED" : "REJECTED");
+        response.setReason(rejectionReason);
+        response.setInventory(inventoryService.getAllItems());
+        return response;
     }
 
     @Transactional
     public OrderResponse cancelOrder(UUID orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
-
-        if ("CANCELLED".equals(order.getStatus())) {
+        Order order = orderRepository.findById(orderId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found"));
+        if(order.getStatus().equals("CANCELLED")) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Order is already cancelled");
-        }
+        }   
+        order.setStatus("CANCELLED");
+        order.setReason("User requested cancellation");
+        orderRepository.save(order);
 
-        Inventory inventory = null;
-        if ("CONFIRMED".equals(order.getStatus())) {
-            for (OrderItem item : order.getItems()) {
-                inventory = inventoryService.restock(item.getProductId(), item.getQuantity());
-            }
-            order.setStatus("CANCELLED");
-            order.setReason("Order cancelled");
-            orderRepository.save(order);
+        for(OrderItem item : order.getItems()) {
+            inventoryService.restock(item.getProductId(), item.getQuantity());
         }
-
-        Integer stock = inventory == null ? null : inventory.getStock();
-        return new OrderResponse(order.getStatus(), order.getReason(),
-            order.getItems().stream()
-                    .map(item -> new OrderItemResponse(order.getOrderId(), item.getProductId(), order.getStatus()))
-                    .toList(), stock);
+        return new OrderResponse(order.getStatus(), order.getReason(), null, inventoryService.getAllItems());
     }
 
-    private OrderResponse rejectedResponse(UUID orderId, List<OrderItemRequest> items, String reason, Integer inventory) {
-        List<OrderItemResponse> itemResponses = items.stream()
-                .map(item -> new OrderItemResponse(orderId, item.getProductId(), "REJECTED"))
-                .toList();
-        return new OrderResponse("REJECTED", reason, itemResponses, inventory);
+    private String getRejectionReason(OrderItemDto item, Inventory currentItem) {
+        String rejectionReason = null;
+        if (currentItem == null) {
+            rejectionReason = "Product not found: " + item.getProductId();
+        } else if (item.getQuantity() <= 0) {
+            rejectionReason = "Invalid quantity for product: " + item.getProductId();
+        } else if (currentItem.getStock() < item.getQuantity()) {
+            rejectionReason = "Insufficient stock for product: " + item.getProductId();
+        }
+        return rejectionReason;
     }
 }

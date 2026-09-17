@@ -1,6 +1,6 @@
 package educ.cit.villegas.inventory.service;
 
-import educ.cit.villegas.entity.Inventory;
+import educ.cit.villegas.inventory.entity.Inventory;
 import educ.cit.villegas.inventory.repository.InventoryRepository;
 import educ.cit.villegas.event.LowStock;
 import org.springframework.beans.factory.annotation.Value;
@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 class InventoryServiceImpl implements InventoryService {
@@ -25,7 +26,7 @@ class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
-    public Inventory getItem(String productId) {
+    public Inventory getItem(UUID productId) {
         return inventoryRepository.findById(productId).orElse(null);
     }
 
@@ -36,7 +37,7 @@ class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public Inventory reserve(String productId, int quantity) {
+    public Inventory reserve(UUID productId, int quantity) {
         Inventory item = getItem(productId);
         if (item == null || quantity <= 0 || item.getStock() < quantity) {
             return null;
@@ -52,7 +53,7 @@ class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public Inventory restock(String productId, int quantity) {
+    public Inventory restock(UUID productId, int quantity) {
         Inventory item = getItem(productId);
         if (item == null || quantity <= 0) {
             return null;

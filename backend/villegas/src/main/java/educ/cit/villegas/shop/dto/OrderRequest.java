@@ -11,5 +11,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class OrderRequest {
-    private List<OrderItemRequest> items;
+    private List<OrderItemDto> items;
 }

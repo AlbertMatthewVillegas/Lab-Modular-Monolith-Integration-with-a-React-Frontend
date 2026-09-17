@@ -1,21 +1,16 @@
 package educ.cit.villegas.shop.dto;
 
-import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.util.UUID;
 
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
 @Setter
-public class OrderItemResponse {
-    private UUID orderId;
-    private String productId;
+public class OrderOutcome {
+    private UUID productId;
     private String outcome;
-
-    public OrderItemResponse(String productId, String outcome) {
-        this(null, productId, outcome);
-    }
 }
