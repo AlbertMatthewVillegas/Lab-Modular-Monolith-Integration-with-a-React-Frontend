@@ -31,6 +31,20 @@ Use the exact host and username shown by Supabase. If the project uses the direc
 
 The backend reads these values through `backend/villegas/src/main/resources/application.properties`. Hibernate schema changes are disabled with `ddl-auto=none`, so the SQL above must be run in Supabase first.
 
+## Architecture Reflection
+
+### 1. What differs between integrating Order/Inventory in-process vs. as separate microservices over a network --> what do you get for free, and what would you need to add back if split?
+
+Keeping modules inside the same application gives you reliable database transactions and instant communication for free. If an order fails, Spring can easily cancel the inventory update using a simple database rollback without any extra networking code. If you split them into separate microservices communicating over a network, everything becomes much more complicated. You lose that shared database safety net, meaning you have to build extra tools to handle network dropouts, server crashes, and tracking requests across different machines. You would have to add API gateways, circuit breakers, and tools to handle delayed data updates across systems.
+
+### 2. Why does package-private visibility on InventoryServiceImpl matter for the module boundary --> what breaks if it's public?
+
+Package-private visibility acts like a locked door between your project folders. By hiding the InventoryServiceImpl class and only sharing its interface, you force the Order module to interact with inventory through a strictly defined rulebook. If the implementation class were public, other parts of the app could accidentally bypass those rules and call the inventory logic directly. This creates messy, tightly-coupled code where changing how inventory works could suddenly break the order system, completely defeating the purpose of organizing your code into clean, independent modules.
+
+### 3. When would you extract Inventory into its own microservice, and what would need to change in your code to do it?
+
+You should only split inventory into its own microservice when the business grows such as handling massive traffic spikes for flash sales that need separate server scaling or when different developer teams need to release updates independently. To make this happen, you would have to rewrite code to stop using direct Java method calls and instead use network requests, like HTTP clients. You would also need to separate the single shared database into two independent databases and set up a system for them to sync data safely without breaking each other.
+
 ## Network Tab Evidence
 
 Multi-item confirmed order: the Network tab shows the successful `POST /api/orders` response containing both line items and `CONFIRMED` status.
@@ -49,16 +63,14 @@ Notification feed: the activity view shows confirmed, rejected, and low-stock no
 
 ![Notification feed evidence](<evidence/The notification feed showing a confirmed order, a rejected order, and a low-stock alert.png>)
 
-## Architecture Reflection
+## Multi-item orders now touch InventoryService several times within one request. What ensures this stays atomic in-process, and what would you need to add (e.g. sagas, compensating transactions) if Order and Inventory were split across a network?
 
-### 1. What differs between integrating Order/Inventory in-process vs. as separate microservices over a network --> what do you get for free, and what would you need to add back if split?
+@Transactional makes sure the request is atomic in-process. If Order and Inventory were split across a network, you would need to implement sagas or compensating transactions to handle failures and ensure that all parts of the transaction either complete successfully or are rolled back appropriately.
 
-Keeping modules inside the same application gives you reliable database transactions and instant communication for free. If an order fails, Spring can easily cancel the inventory update using a simple database rollback without any extra networking code. If you split them into separate microservices communicating over a network, everything becomes much more complicated. You lose that shared database safety net, meaning you have to build extra tools to handle network dropouts, server crashes, and tracking requests across different machines. You would have to add API gateways, circuit breakers, and tools to handle delayed data updates across systems.
+## How does publishing an event instead of calling Notification directly change the coupling between OrderService and Notification? What would you need if Notification became a separate microservice (message broker, delivery guarantees)?
 
-### 2. Why does package-private visibility on InventoryServiceImpl matter for the module boundary --> what breaks if it's public?
+Publishing an event decouples OrderService from Notification, allowing them to operate independently. If Notification became a separate microservice, you would need a message broker to handle the event delivery and ensure that messages are reliably delivered, possibly with delivery guarantees like at-least-once or exactly-once semantics to prevent message loss or duplication.
 
-Package-private visibility acts like a locked door between your project folders. By hiding the InventoryServiceImpl class and only sharing its interface, you force the Order module to interact with inventory through a strictly defined rulebook. If the implementation class were public, other parts of the app could accidentally bypass those rules and call the inventory logic directly. This creates messy, tightly-coupled code where changing how inventory works could suddenly break the order system, completely defeating the purpose of organizing your code into clean, independent modules.
+## You now have three modules and two distinct event types. If forced to extract exactly one module into its own microservice first, which would you pick and why - and what changes in your code to do it?
 
-### 3. When would you extract Inventory into its own microservice, and what would need to change in your code to do it?
-
-You should only split inventory into its own microservice when the business grows such as handling massive traffic spikes for flash sales that need separate server scaling or when different developer teams need to release updates independently. To make this happen, you would have to rewrite code to stop using direct Java method calls and instead use network requests, like HTTP clients. You would also need to separate the single shared database into two independent databases and set up a system for them to sync data safely without breaking each other.
+I would extract the Notification module into its own microservice first. This is because notifications are often less critical to the core business logic and can be handled asynchronously, making it easier to decouple from the main application. By doing this, we can scale the notification service independently and allow for more flexibility in how notifications are processed and delivered.
