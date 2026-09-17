@@ -21,11 +21,10 @@ type OrderResult = {
 
 type OrderHistoryEntry = {
   orderId: string
-  productId: string
-  quantity: number
   status: 'CONFIRMED' | 'REJECTED' | 'CANCELLED'
   reason: string | null
   createdAt: string
+  items: { productId: string; quantity: number }[]
 }
 
 const apiUrl =  'http://localhost:8080'
@@ -237,8 +236,15 @@ function App() {
               {orderHistory.map((order) => (
                 <div className="flex items-center justify-between gap-4 py-4" key={order.orderId}>
                   <div>
-                    <strong className="block font-serif text-xl font-normal">{products.find((product) => product.id === order.productId)?.name ?? order.productId}</strong>
-                    <span className="font-mono text-xs text-emerald-800/60">{order.productId} · {order.quantity} · {order.status}</span>
+                    <strong className="block font-serif text-xl font-normal">Order {order.orderId.slice(0, 8)}</strong>
+                    <div className="font-mono text-xs text-emerald-800/60">
+                      {order.items.map((item) => (
+                        <span className="mr-3" key={item.productId}>
+                          {products.find((product) => product.id === item.productId)?.name ?? item.productId} · {item.quantity}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="font-mono text-xs text-emerald-800/60">{order.status}</span>
                   </div>
                   <button
                     className="shrink-0 border border-red-700 px-4 py-2 font-mono text-xs font-bold uppercase tracking-[0.08em] text-red-700 transition hover:bg-red-700 hover:text-stone-50 disabled:cursor-not-allowed disabled:border-emerald-900/20 disabled:text-emerald-900/30"

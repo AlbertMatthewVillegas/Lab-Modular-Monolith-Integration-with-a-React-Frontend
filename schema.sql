@@ -25,10 +25,10 @@ create table public.orders (
 );
 
 create table public.order_items (
+    order_item_id uuid primary key default gen_random_uuid(),
     order_id uuid not null references public.orders(order_id) on delete cascade,
     product_id text not null references public.inventory(product_id),
-    quantity integer not null check (quantity > 0),
-    primary key (order_id, product_id)
+    quantity integer not null check (quantity > 0)
 );
 
 create table public.notifications (
