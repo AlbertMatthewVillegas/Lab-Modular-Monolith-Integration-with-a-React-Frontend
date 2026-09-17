@@ -33,13 +33,21 @@ The backend reads these values through `backend/villegas/src/main/resources/appl
 
 ## Network Tab Evidence
 
-Rejected order request: the Network tab shows `POST /api/orders` returning `200`, and the UI displays `REJECTED`.
+Multi-item confirmed order: the Network tab shows the successful `POST /api/orders` response containing both line items and `CONFIRMED` status.
 
-![Rejected order Network tab evidence](<evidence/Screenshot 2026-09-10 at 8.00.07 PM.png>)
+![Multi-item confirmed order evidence](<evidence/A multi-item order where all items succeed (CONFIRMED).png>)
 
-Confirmed order request: the Network tab shows `POST /api/orders` returning `200`, and the UI displays `CONFIRMED`.
+Multi-item rejected order: the Network tab shows `POST /api/orders` returning `REJECTED` for the failed line, with no partial reservation.
 
-![Confirmed order Network tab evidence](<evidence/Screenshot 2026-09-10 at 8.00.22 PM.png>)
+![Multi-item rejected order evidence](<evidence/A multi-item order where one item fails and the whole order is REJECTED with no partial reservation.png>)
+
+Cancel and restock: the Network tab shows the cancellation response with `CANCELLED` status and the subsequent inventory response reflecting restored stock.
+
+![Cancel and restock evidence](<evidence/A cancel with restock reflected in GET api-inventory afterward.png>)
+
+Notification feed: the activity view shows confirmed, rejected, and low-stock notification entries.
+
+![Notification feed evidence](<evidence/The notification feed showing a confirmed order, a rejected order, and a low-stock alert.png>)
 
 ## Architecture Reflection
 
