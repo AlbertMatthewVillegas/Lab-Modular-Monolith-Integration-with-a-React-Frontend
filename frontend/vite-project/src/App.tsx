@@ -63,7 +63,7 @@ function App() {
       const existingItem = currentCart.find((item) => item.id === product.id)
       if (existingItem) {
         return currentCart.map((item) => item.id === product.id
-          ? { ...item, quantity: Math.min(item.quantity + 1, product.stock) }
+          ? { ...item, quantity: Math.min(item.quantity + 1, Math.max(product.stock, 1)) }
           : item)
       }
       return [...currentCart, { ...product, quantity: 1 }]
@@ -74,7 +74,7 @@ function App() {
 
   function updateQuantity(productId: string, quantity: number) {
     setCart((currentCart) => currentCart.map((item) => item.id === productId
-      ? { ...item, quantity: Math.max(1, Math.min(quantity, item.stock)) }
+      ? { ...item, quantity: Math.max(1, Math.min(quantity, Math.max(item.stock, 1))) }
       : item))
   }
 
@@ -159,7 +159,7 @@ function App() {
                 <tbody className="divide-y divide-emerald-900/15">
               {products.map((product) => {
                 const cartItem = cart.find((item) => item.id === product.id)
-                const isAtLimit = cartItem?.quantity === product.stock
+                const isAtLimit = product.stock > 0 && cartItem?.quantity === product.stock
                 const isLowStock = product.stock < lowStockThreshold
                 return (
                   <tr className={product.stock === 0 ? 'bg-red-100/70' : isLowStock ? 'bg-amber-100/70' : ''} key={product.id}>
@@ -204,7 +204,7 @@ function App() {
                     </div>
                     <div className="flex items-center border border-emerald-900/25" aria-label={`Quantity for ${item.name}`}>
                       <button className="h-9 w-9 font-mono text-lg text-emerald-900 transition hover:bg-emerald-900 hover:text-stone-50" type="button" onClick={() => updateQuantity(item.id, item.quantity - 1)} aria-label={`Decrease ${item.name} quantity`}>−</button>
-                      <input className="h-9 w-10 border-x border-emerald-900/25 bg-transparent text-center font-mono text-sm outline-none" type="number" min="1" max={item.stock} value={item.quantity} onChange={(event) => updateQuantity(item.id, Number(event.target.value) || 1)} aria-label={`${item.name} quantity`} />
+                      <input className="h-9 w-10 border-x border-emerald-900/25 bg-transparent text-center font-mono text-sm outline-none" type="number" min="1" max={Math.max(item.stock, 1)} value={item.quantity} onChange={(event) => updateQuantity(item.id, Number(event.target.value) || 1)} aria-label={`${item.name} quantity`} />
                       <button className="h-9 w-9 font-mono text-lg text-emerald-900 transition hover:bg-emerald-900 hover:text-stone-50 disabled:opacity-30" type="button" onClick={() => updateQuantity(item.id, item.quantity + 1)} disabled={item.quantity >= item.stock} aria-label={`Increase ${item.name} quantity`}>+</button>
                     </div>
                     <button className="font-mono text-xs uppercase tracking-[0.08em] text-red-700 hover:underline" type="button" onClick={() => removeFromCart(item.id)}>Remove</button>
