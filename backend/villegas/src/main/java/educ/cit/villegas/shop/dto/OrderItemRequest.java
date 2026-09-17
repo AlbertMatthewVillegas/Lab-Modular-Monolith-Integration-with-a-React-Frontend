@@ -1,6 +1,5 @@
 package educ.cit.villegas.shop.dto;
 
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -10,6 +9,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class OrderRequest {
-    private List<OrderItemRequest> items;
+public class OrderItemRequest {
+    private String productId;
+    private int quantity;
 }
