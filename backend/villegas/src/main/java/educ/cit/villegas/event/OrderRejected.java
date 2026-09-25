@@ -1,6 +1,6 @@
 package educ.cit.villegas.event;
 
-import educ.cit.villegas.entity.Order;
+import educ.cit.villegas.shop.entity.Order;
 
 public record OrderRejected(Order order) {
 }

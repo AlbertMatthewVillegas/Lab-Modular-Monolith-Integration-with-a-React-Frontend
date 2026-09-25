@@ -1,4 +1,4 @@
-package educ.cit.villegas.notification;
+package educ.cit.villegas.notification.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -22,20 +22,14 @@ public class Notification {
     @UuidGenerator
     private UUID notificationId;
     private UUID orderId;
-    private String productId;
+    private UUID productId;
     private String message;
     private OffsetDateTime createdAt;
 
     protected Notification() {
     }
 
-    public Notification(UUID orderId, String message) {
-        this.orderId = orderId;
-        this.message = message;
-        this.createdAt = OffsetDateTime.now();
-    }
-
-    public Notification(String productId, String message) {
+    public Notification(UUID productId, String message) {
         this.productId = productId;
         this.message = message;
         this.createdAt = OffsetDateTime.now();

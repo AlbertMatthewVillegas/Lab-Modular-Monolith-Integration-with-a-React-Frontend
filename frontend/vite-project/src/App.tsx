@@ -1,135 +1,22 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { useShop } from './hooks/useShop'
 
-const initialProducts = [
-  { id: 'P100', name: 'Wireless Mouse', stock: 25 },
-  { id: 'P200', name: 'Mechanical Keyboard', stock: 10 },
-  { id: 'P300', name: 'USB-C Hub', stock: 0 },
-]
-
-type Product = (typeof initialProducts)[number]
-
-type CartItem = Product & {
-  quantity: number
-}
-
-type OrderResult = {
-  status: 'CONFIRMED' | 'REJECTED' | 'CANCELLED'
-  reason: string
-  items: { orderId: string | null; productId: string; outcome: string }[]
-  inventory: number | null
-}
-
-type OrderHistoryEntry = {
-  orderId: string
-  status: 'CONFIRMED' | 'REJECTED' | 'CANCELLED'
-  reason: string | null
-  createdAt: string
-  items: { productId: string; quantity: number }[]
-}
-
-const apiUrl =  'http://localhost:8080'
 const lowStockThreshold = 5
 
 function App() {
-  const [products, setProducts] = useState<Product[]>(initialProducts)
-  const [cart, setCart] = useState<CartItem[]>([])
-  const [result, setResult] = useState<OrderResult | null>(null)
-  const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
-  const [error, setError] = useState('')
-
-  async function refreshData() {
-    const [inventoryResponse, ordersResponse] = await Promise.all([
-      fetch(`${apiUrl}/api/inventory`),
-      fetch(`${apiUrl}/api/orders`),
-    ])
-    if (!inventoryResponse.ok || !ordersResponse.ok) {
-      throw new Error('The latest inventory and order history could not be loaded.')
-    }
-    setProducts(await inventoryResponse.json() as Product[])
-    setOrderHistory(await ordersResponse.json() as OrderHistoryEntry[])
-  }
-
-  useEffect(() => {
-    refreshData().catch((requestError) => {
-      setError(requestError instanceof Error ? requestError.message : 'The latest inventory and order history could not be loaded.')
-    })
-  }, [])
-
-  function addToCart(product: Product) {
-    setCart((currentCart) => {
-      const existingItem = currentCart.find((item) => item.id === product.id)
-      if (existingItem) {
-        return currentCart.map((item) => item.id === product.id
-          ? { ...item, quantity: Math.min(item.quantity + 1, Math.max(product.stock, 1)) }
-          : item)
-      }
-      return [...currentCart, { ...product, quantity: 1 }]
-    })
-    setResult(null)
-    setError('')
-  }
-
-  function updateQuantity(productId: string, quantity: number) {
-    setCart((currentCart) => currentCart.map((item) => item.id === productId
-      ? { ...item, quantity: Math.max(1, Math.min(quantity, Math.max(item.stock, 1))) }
-      : item))
-  }
-
-  function removeFromCart(productId: string) {
-    setCart((currentCart) => currentCart.filter((item) => item.id !== productId))
-  }
-
-  async function submitOrder(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (cart.length === 0) {
-      setError('Add at least one product to your cart.')
-      return
-    }
-    setIsSubmitting(true)
-    setError('')
-    setResult(null)
-
-    try {
-      const response = await fetch(`${apiUrl}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: cart.map(({ id, quantity }) => ({ productId: id, quantity })) }),
-      })
-
-      if (!response.ok) {
-        throw new Error('The order could not be submitted.')
-      }
-
-      const orderResult = await response.json() as OrderResult
-      setResult(orderResult)
-      await refreshData()
-      setCart([])
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'The order could not be submitted.')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  async function cancelOrder(orderId: string) {
-    setCancellingOrderId(orderId)
-    setError('')
-
-    try {
-      const response = await fetch(`${apiUrl}/api/orders/${orderId}/cancel`, { method: 'POST' })
-      if (!response.ok) {
-        throw new Error(response.status === 409 ? 'This order is already cancelled.' : 'The order could not be cancelled.')
-      }
-
-      await refreshData()
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'The order could not be cancelled.')
-    } finally {
-      setCancellingOrderId(null)
-    }
-  }
+  const {
+    products,
+    cart,
+    result,
+    orderHistory,
+    isSubmitting,
+    cancellingOrderId,
+    error,
+    addToCart,
+    updateQuantity,
+    removeFromCart,
+    submitOrder,
+    cancelOrder,
+  } = useShop()
 
   return (
     <main className="min-h-screen bg-stone-100 text-emerald-950 lg:grid lg:grid-cols-[minmax(0,1fr)_34%]">
@@ -223,7 +110,9 @@ function App() {
             <div className="mt-2 grid gap-1 border-t border-emerald-900/10 pt-2">
               {result.items.map((item) => <span className="font-mono text-xs text-emerald-950/60" key={item.productId}>{item.productId} · {item.outcome}</span>)}
             </div>
-            {result.inventory !== null && <span className="text-emerald-950/60">{result.inventory} remaining</span>}
+            {result.inventory.map((item) => (
+              <span className="text-emerald-950/60" key={item.productId}>{item.productId} · {item.stock} remaining</span>
+            ))}
           </div>
         )}
         {orderHistory.length > 0 && (

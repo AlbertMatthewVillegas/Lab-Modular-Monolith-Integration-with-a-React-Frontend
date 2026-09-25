@@ -1,6 +1,7 @@
-package educ.cit.villegas.notification;
+package educ.cit.villegas.notification.controller;
 
-import org.springframework.web.bind.annotation.CrossOrigin;
+import educ.cit.villegas.notification.entity.Notification;
+import educ.cit.villegas.notification.service.NotificationService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -9,7 +10,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "${FRONTEND_ORIGIN:http://localhost:5173}")
 public class NotificationController {
 
     private final NotificationService notificationService;

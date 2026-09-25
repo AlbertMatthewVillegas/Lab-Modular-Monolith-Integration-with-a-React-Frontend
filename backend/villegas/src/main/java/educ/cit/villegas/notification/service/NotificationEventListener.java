@@ -1,8 +1,9 @@
-package educ.cit.villegas.notification;
+package educ.cit.villegas.notification.service;
 
+import educ.cit.villegas.event.LowStock;
 import educ.cit.villegas.event.OrderPlaced;
 import educ.cit.villegas.event.OrderRejected;
-import educ.cit.villegas.event.LowStock;
+import educ.cit.villegas.notification.entity.Notification;
 import educ.cit.villegas.notification.repository.NotificationRepository;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;

@@ -9,15 +9,16 @@ drop table if exists public.orders cascade;
 drop table if exists public.inventory cascade;
 
 create table public.inventory (
-    product_id text primary key,
+    product_id uuid primary key,
     name text not null,
+    price numeric(12, 2) not null check (price >= 0),
     stock integer not null check (stock >= 0)
 );
 
 create table public.orders (
     order_id uuid primary key default gen_random_uuid(),
     -- Kept for compatibility with the current Spring Order entity.
-    product_id text references public.inventory(product_id),
+    product_id uuid references public.inventory(product_id),
     quantity integer check (quantity > 0),
     status text not null check (status in ('CONFIRMED', 'REJECTED', 'CANCELLED')),
     reason text,
@@ -25,25 +26,26 @@ create table public.orders (
 );
 
 create table public.order_items (
-    order_item_id uuid primary key default gen_random_uuid(),
+    product_id uuid not null references public.inventory(product_id),
     order_id uuid not null references public.orders(order_id) on delete cascade,
-    product_id text not null references public.inventory(product_id),
-    quantity integer not null check (quantity > 0)
+    price numeric(12, 2) not null check (price >= 0),
+    quantity integer not null check (quantity > 0),
+    primary key (order_id, product_id)
 );
 
 create table public.notifications (
     notification_id uuid primary key default gen_random_uuid(),
     order_id uuid references public.orders(order_id) on delete set null,
-    product_id text references public.inventory(product_id) on delete set null,
+    product_id uuid,
     message text not null,
     created_at timestamptz not null default now()
 );
 
-insert into public.inventory (product_id, name, stock)
+insert into public.inventory (product_id, name, price, stock)
 values
-    ('P100', 'Wireless Mouse', 25),
-    ('P200', 'Mechanical Keyboard', 10),
-    ('P300', 'USB-C Hub', 0);
+    ('550e8400-e29b-41d4-a716-446655440100', 'Wireless Mouse', 24.99, 25),
+    ('550e8400-e29b-41d4-a716-446655440200', 'Mechanical Keyboard', 79.99, 10),
+    ('550e8400-e29b-41d4-a716-446655440300', 'USB-C Hub', 19.99, 0);
 
 -- Verify the recreated schema:
 select * from public.inventory order by product_id;

@@ -1,15 +1,16 @@
 package educ.cit.villegas.inventory.service;
 
-import educ.cit.villegas.entity.Inventory;
+import educ.cit.villegas.inventory.entity.Inventory;
 import java.util.List;
+import java.util.UUID;
 
 public interface InventoryService {
 
-	Inventory getItem(String productId);
+	Inventory getItem(UUID productId);
 
 	List<Inventory> getAllItems();
 
-	Inventory reserve(String productId, int quantity);
+	Inventory reserve(UUID productId, int quantity);
 
-	Inventory restock(String productId, int quantity);
+	Inventory restock(UUID productId, int quantity);
 }
