@@ -41,6 +41,19 @@ create table public.notifications (
     created_at timestamptz not null default now()
 );
 
+create table public.supplier_orders (
+    id uuid primary key default gen_random_uuid(),
+    product_id uuid not null references public.inventory(product_id),
+    buyer_ref text not null unique,
+    request_id text not null unique,
+    po_number text,
+    cases integer not null check (cases > 0),
+    units integer not null check (units > 0),
+    status text not null check (status in ('PENDING', 'ACCEPTED', 'PICKING', 'SHIPPED', 'DELIVERED', 'FAILED', 'UNKNOWN')),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 insert into public.inventory (product_id, name, price, stock)
 values
     ('550e8400-e29b-41d4-a716-446655440100', 'Wireless Mouse', 24.99, 25),
