@@ -3,6 +3,7 @@
 
 create extension if not exists pgcrypto;
 
+drop table if exists public.supplier_orders cascade;
 drop table if exists public.notifications cascade;
 drop table if exists public.order_items cascade;
 drop table if exists public.orders cascade;
@@ -41,6 +42,24 @@ create table public.notifications (
     created_at timestamptz not null default now()
 );
 
+create table public.supplier_orders (
+    id         bigint generated always as identity primary key,
+    product_id uuid        not null references public.inventory (product_id),
+    buyer_ref  text unique,
+    request_id text        not null unique,
+    po_number  text,
+    cases      integer     not null check (cases between 1 and 99),
+    units      integer     not null check (units > 0),
+    status     text        not null check (status in ('PENDING', 'PLACED', 'PICKING', 'SHIPPED',
+                                                     'DELIVERED', 'FAILED', 'NEEDS_REVIEW')),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create index supplier_orders_status_idx on public.supplier_orders (status);
+
+alter table public.supplier_orders enable row level security;
+
 insert into public.inventory (product_id, name, price, stock)
 values
     ('550e8400-e29b-41d4-a716-446655440100', 'Wireless Mouse', 24.99, 25),
@@ -52,3 +71,4 @@ select * from public.inventory order by product_id;
 select * from public.orders order by created_at desc;
 select * from public.order_items order by order_id, product_id;
 select * from public.notifications order by created_at desc;
+select * from public.supplier_orders order by id;

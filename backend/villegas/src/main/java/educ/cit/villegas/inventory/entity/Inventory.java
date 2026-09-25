@@ -2,6 +2,7 @@ package educ.cit.villegas.inventory.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Column;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -15,9 +16,13 @@ import java.util.UUID;
 public class Inventory {
 
     @Id
+    @Column(name = "product_id")
     private UUID productId;
+    @Column(nullable = false)
     private String name;
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+    @Column(nullable = false)
     private int stock;
 
     protected Inventory() {

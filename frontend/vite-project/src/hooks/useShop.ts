@@ -1,7 +1,11 @@
-import { type FormEvent, useEffect, useState } from 'react'
+import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { useInventory, type Product } from './useInventory'
 import { cancelOrder as cancelOrderRequest, getOrderHistory, placeOrder } from '../service/orderService'
 import type { Inventory } from '../entity/Inventory'
+import { getNotifications } from '../service/notificationService'
+import type { Notification } from '../entity/Notification'
+import { getSupplierOrders } from '../service/supplierOrderService'
+import type { SupplierOrder } from '../entity/SupplierOrder'
 
 type CartItem = Product & {
   quantity: number
@@ -27,22 +31,29 @@ export function useShop() {
   const [cart, setCart] = useState<CartItem[]>([])
   const [result, setResult] = useState<OrderResult | null>(null)
   const [orderHistory, setOrderHistory] = useState<OrderHistoryEntry[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [supplierOrders, setSupplierOrders] = useState<SupplierOrder[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  async function refreshData() {
-    const [, orders] = await Promise.all([refreshInventory(), getOrderHistory()])
+  const refreshData = useCallback(async () => {
+    const [, orders, activity, reorders] = await Promise.all([
+      refreshInventory(),
+      getOrderHistory(),
+      getNotifications(),
+      getSupplierOrders(),
+    ])
     setOrderHistory(orders as OrderHistoryEntry[])
-  }
+    setNotifications(activity)
+    setSupplierOrders(reorders)
+  }, [refreshInventory])
 
   useEffect(() => {
-    getOrderHistory().then((orders) => {
-      setOrderHistory(orders as OrderHistoryEntry[])
-    }).catch((requestError) => {
+    refreshData().catch((requestError) => {
       setError(requestError instanceof Error ? requestError.message : 'The latest inventory and order history could not be loaded.')
     })
-  }, [])
+  }, [refreshData])
 
   useEffect(() => {
     if (inventoryError) {
@@ -117,6 +128,8 @@ export function useShop() {
     cart,
     result,
     orderHistory,
+    notifications,
+    supplierOrders,
     isSubmitting,
     cancellingOrderId,
     error,

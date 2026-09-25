@@ -1,4 +1,6 @@
 import { useShop } from './hooks/useShop'
+import { ActivityFeed } from './components/ActivityFeed'
+import { SupplierOrders } from './components/SupplierOrders'
 
 const lowStockThreshold = 5
 
@@ -8,6 +10,8 @@ function App() {
     cart,
     result,
     orderHistory,
+    notifications,
+    supplierOrders,
     isSubmitting,
     cancellingOrderId,
     error,
@@ -149,11 +153,18 @@ function App() {
           </section>
         )}
         {error && <p className="mt-6 max-w-md text-red-700" role="alert">{error}</p>}
+        <SupplierOrders
+          orders={supplierOrders}
+          names={Object.fromEntries(products.map((product) => [product.id, product.name]))}
+        />
         </div>
       </section>
       <aside className="flex min-h-52 flex-col justify-between bg-emerald-900 p-6 text-stone-100 sm:p-10 lg:min-h-screen lg:p-12">
-        <span className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-lime-200">Supabase / Postgres</span>
-        <strong className="max-w-xs font-serif text-3xl font-normal leading-none sm:text-4xl">Stock moves when the order is confirmed.</strong>
+        <div>
+          <span className="font-mono text-xs font-bold uppercase tracking-[0.12em] text-lime-200">Supabase / Postgres</span>
+          <strong className="mt-8 block max-w-xs font-serif text-3xl font-normal leading-none sm:text-4xl">Stock moves when the order is confirmed.</strong>
+          <ActivityFeed entries={notifications} />
+        </div>
       </aside>
     </main>
   )

@@ -1,6 +1,7 @@
 package educ.cit.villegas.shop.entity;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
@@ -27,9 +28,15 @@ public class Order {
     @Id
     @GeneratedValue
     @UuidGenerator
+    @Column(name = "order_id")
     private UUID orderId;
+    @Column(nullable = false)
     private String status;
     private String reason;
+    @Column(name = "product_id")
+    private UUID productId;
+    private Integer quantity;
+    @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)

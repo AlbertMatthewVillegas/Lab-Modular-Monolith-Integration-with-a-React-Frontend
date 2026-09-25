@@ -8,6 +8,7 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Transient;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -29,7 +30,9 @@ public class OrderItem {
     @JsonIgnore
     private Order order;
 
+    @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal price;
+    @Column(nullable = false)
     private int quantity;
 
     protected OrderItem() {

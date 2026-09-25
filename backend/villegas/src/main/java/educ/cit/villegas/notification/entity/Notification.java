@@ -1,6 +1,7 @@
 package educ.cit.villegas.notification.entity;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.Column;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -20,16 +21,28 @@ public class Notification {
     @Id
     @GeneratedValue
     @UuidGenerator
+    @Column(name = "notification_id")
     private UUID notificationId;
+    @Column(name = "order_id")
     private UUID orderId;
+    @Column(name = "product_id")
     private UUID productId;
+    @Column(nullable = false)
     private String message;
+    @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
     protected Notification() {
     }
 
-    public Notification(UUID productId, String message) {
+    public Notification(UUID orderId, String message) {
+        this.orderId = orderId;
+        this.message = message;
+        this.createdAt = OffsetDateTime.now();
+    }
+
+    public Notification(UUID orderId, UUID productId, String message) {
+        this.orderId = orderId;
         this.productId = productId;
         this.message = message;
         this.createdAt = OffsetDateTime.now();
