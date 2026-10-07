@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
 import java.util.UUID;
+import educ.cit.villegas.inventory.InventoryView;
 
 @Entity
 @Getter
@@ -33,5 +34,9 @@ public class Inventory {
         this.name = name;
         this.price = price;
         this.stock = stock;
+    }
+
+    public InventoryView toView(int threshold) {
+        return new InventoryView(productId.toString(), name, price, stock, stock < threshold);
     }
 }

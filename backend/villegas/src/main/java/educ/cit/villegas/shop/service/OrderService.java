@@ -14,6 +14,7 @@ import educ.cit.villegas.event.LowStock;
 import educ.cit.villegas.event.OrderPlaced;
 import educ.cit.villegas.event.OrderRejected;
 import educ.cit.villegas.inventory.entity.Inventory;
+import educ.cit.villegas.inventory.events.StockChangedEvent;
 import educ.cit.villegas.inventory.service.InventoryService;
 import educ.cit.villegas.shop.dto.OrderItemDto;
 import educ.cit.villegas.shop.dto.OrderOutcome;
@@ -106,7 +107,15 @@ public class OrderService {
         orderRepository.save(order);
 
         for(OrderItem item : order.getItems()) {
-            inventoryService.restock(item.getProductId(), item.getQuantity());
+            Inventory restored = inventoryService.restock(item.getProductId(), item.getQuantity());
+            if (restored == null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Could not restore stock for product " + item.getProductId());
+            }
+            eventPublisher.publishEvent(new StockChangedEvent(
+                item.getProductId().toString(),
+                item.getQuantity(),
+                restored.getStock()));
         }
         return new OrderResponse(order.getStatus(), order.getReason(), null, inventoryService.getAllItems());
     }

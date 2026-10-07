@@ -35,7 +35,7 @@ class ReorderSender {
     }
 
     @Async
-    @TransactionalEventListener
+    @TransactionalEventListener(fallbackExecution = true)
     public void onReorderSaved(ReorderSaved event) {
         send(event.supplierOrderId());
     }

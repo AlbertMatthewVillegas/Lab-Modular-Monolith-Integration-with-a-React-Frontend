@@ -8,11 +8,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.List;
 @Service
 class ReorderService implements SupplierGateway {
 
     private static final Logger log = LoggerFactory.getLogger(ReorderService.class);
+
+    private static final List<SupplierOrderStatus> ON_THE_WAY = SupplierOrderStatus.TRACKED;
 
     private final SupplierOrderRepository repository;
     private final LegacySupplyTranslator translator;
@@ -28,7 +30,7 @@ class ReorderService implements SupplierGateway {
 
     @Override
     @Transactional
-    public ReorderResult requestReorder(String productId, int unitsNeeded) {
+    public synchronized ReorderResult requestReorder(String productId, int unitsNeeded) {
         if (!translator.knows(productId)) {
             log.warn("No supplier item for product {}, reorder skipped", productId);
             return new ReorderResult(null, productId, 0, SupplierOrderStatus.FAILED);
@@ -46,5 +48,18 @@ class ReorderService implements SupplierGateway {
 
         events.publishEvent(new ReorderSaved(order.getId()));
         return order.toResult();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int unitsOnTheWay(String productId) {
+        return repository.findByProductIdAndStatusIn(UUID.fromString(productId), ON_THE_WAY).stream()
+                .mapToInt(SupplierOrder::getUnits)
+                .sum();
+    }
+
+    @Override
+    public Optional<String> supplierItemFor(String productId) {
+        return translator.knows(productId) ? Optional.of(translator.supplierSku(productId)) : Optional.empty();
     }
 }

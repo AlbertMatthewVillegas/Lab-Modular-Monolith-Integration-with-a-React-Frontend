@@ -16,13 +16,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import educ.cit.villegas.app.AppInstance;
 
 @Component
 class LegacySupplyClient {
 
     private static final Logger log = LoggerFactory.getLogger(LegacySupplyClient.class);
 
-    private static final Duration TIMEOUT = Duration.ofSeconds(3);
+    private static final Duration TIMEOUT = Duration.ofSeconds(6);
     private static final int MAX_ATTEMPTS = 3;
     private static final long FIRST_BACKOFF_MS = 500;
 
@@ -31,18 +32,21 @@ class LegacySupplyClient {
     private final String clientId;
     private final String apiKey;
     private final Duration sessionLifetime;
+    private final AppInstance instance;
 
     private String sessionToken;
     private Instant sessionStartedAt;
 
-    LegacySupplyClient(@Value("${legacy.supply.api.url}") String baseUrl,
-                       @Value("${legacy.supply.client.id}") String clientId,
-                       @Value("${legacy.supply.api.key}") String apiKey,
-                       @Value("${legacy.supply.session-renew-after-seconds}") long sessionRenewAfterSeconds) {
+    LegacySupplyClient(@Value("${legacysupply.base-url}") String baseUrl,
+                       @Value("${legacysupply.client-id}") String clientId,
+                       @Value("${legacysupply.api-key}") String apiKey,
+                       @Value("${legacysupply.session-renew-after-seconds}") long sessionRenewAfterSeconds,
+                       AppInstance instance) {
         this.baseUrl = baseUrl;
         this.clientId = clientId;
         this.apiKey = apiKey;
         this.sessionLifetime = Duration.ofSeconds(sessionRenewAfterSeconds);
+        this.instance = instance;
     }
 
     LegacyOrderAck placeOrder(String supplierSku, int qty, String buyerRef, String requestId) {
@@ -88,6 +92,7 @@ class LegacySupplyClient {
 
         HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(TIMEOUT)
+                .header(AppInstance.HEADER, instance.id())
                 .header("X-LS-Session", sessionToken);
         if (requestId != null) {
             request.header("X-Request-Id", requestId);
@@ -104,6 +109,7 @@ class LegacySupplyClient {
     private void signIn() {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + "/auth/token"))
                 .timeout(TIMEOUT)
+                .header(AppInstance.HEADER, instance.id())
                 .header("Content-Type", "application/xml")
                 .POST(HttpRequest.BodyPublishers.ofString(LegacySupplyXml.authRequest(clientId, apiKey)))
                 .build();
